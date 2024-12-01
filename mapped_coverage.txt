@@ -1,0 +1,30 @@
+0xffffffff818f3721
+__x64_sys_read
+/home/slava/linux/fs/read_write.c:715
+0xffffffff818f351b
+class_fd_pos_constructor
+/home/slava/linux/./include/linux/file.h:85
+0xffffffff81987409
+__fget_light
+/home/slava/linux/fs/file.c:1133 (discriminator 1)
+0xffffffff81987488
+files_lookup_fd_raw
+/home/slava/linux/./include/linux/fdtable.h:74 (discriminator 2)
+0xffffffff819875ea
+fdget_pos
+/home/slava/linux/fs/file.c:1185
+0xffffffff818f366a
+ksys_read
+/home/slava/linux/fs/read_write.c:698
+0xffffffff810c48e5
+instrument_atomic_read
+/home/slava/linux/./include/linux/instrumented.h:68
+0xffffffff810c492a
+fpregs_assert_state_consistent
+/home/slava/linux/arch/x86/kernel/fpu/core.c:822 (discriminator 1)
+0xffffffff810c495d
+fpregs_state_valid
+/home/slava/linux/arch/x86/kernel/fpu/context.h:38 (discriminator 11)
+0xffffffff8474965f
+arch_exit_work
+/home/slava/linux/./arch/x86/include/asm/entry-common.h:57 (discriminator 1)

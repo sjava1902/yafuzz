@@ -1,0 +1,18 @@
+{
+    "target": "linux/amd64",
+    "http": "localhost:56741",
+    "workdir": "/home/lvc/syzkaller/workdir",
+    "kernel_obj": "/home/lvc/linux-stable",
+    "image": "/home/lvc/syzkaller/bullseye.img",
+    "sshkey": "/home/lvc/syzkaller/bullseye.id_rsa",
+    "syzkaller": "/home/lvc/syzkaller",
+    "procs": 4,
+    "type": "qemu",
+    "vm": {
+       "count": 3,
+       "cpu": 2,
+       "mem": 2048,
+       "kernel": "/home/lvc/linux-stable/arch/x86/boot/bzImage"
+    },
+    "disable_syscalls": ["keyctl", "add_key", "request_key"]
+}
