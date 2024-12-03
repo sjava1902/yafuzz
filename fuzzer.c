@@ -11,6 +11,17 @@
 #include <linux/kcov.h>
 #include <errno.h>
 #include <time.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <linux/types.h>
+
+#define KCOV_INIT_TRACE                     _IOR('c', 1, unsigned long)
+#define KCOV_ENABLE                 _IO('c', 100)
+#define KCOV_DISABLE                        _IO('c', 101)
+#define COVER_SIZE                  (64<<10)
+
+#define KCOV_TRACE_PC  0
+#define KCOV_TRACE_CMP 1
 
 #define KCOV_BUFFER_SIZE (64 * 1024) // Размер буфера для kcov
 #define TEST_DIR "/mnt/ext4_test"
@@ -18,6 +29,9 @@
 #define LOOP_DEVICE "/dev/loop99"
 #define IMAGE_SIZE_MB 100
 #define MAX_OPS 100
+
+int kcov_fd = -1;
+unsigned long *kcov_cover = NULL;
 
 // Типы операций для фаззинга
 typedef enum {
@@ -211,6 +225,49 @@ void cleanup_resources() {
     }
 }
 
+void kcov_init() {
+    /* A single fd descriptor allows coverage collection on a single
+     * thread.
+     */
+    kcov_fd = open("/sys/kernel/debug/kcov", O_RDWR);
+    if (kcov_fd == -1)
+            perror("open"), exit(1);
+    /* Setup trace mode and trace size. */
+    if (ioctl(kcov_fd, KCOV_INIT_TRACE, COVER_SIZE))
+            perror("ioctl"), exit(1);
+    /* Mmap buffer shared between kernel- and user-space. */
+    kcov_cover = (unsigned long*)mmap(NULL, COVER_SIZE * sizeof(unsigned long),
+                                 PROT_READ | PROT_WRITE, MAP_SHARED, kcov_fd, 0);
+    if ((void*)kcov_cover == MAP_FAILED)
+            perror("mmap"), exit(1);
+    /* Enable coverage collection on the current thread. */
+    if (ioctl(kcov_fd, KCOV_ENABLE, KCOV_TRACE_PC))
+            perror("ioctl"), exit(1);
+    /* Reset coverage from the tail of the ioctl() call. */
+    __atomic_store_n(&kcov_cover[0], 0, __ATOMIC_RELAXED);
+}
+
+void kcov_close() {
+    /* Read number of PCs collected. */
+    int n = __atomic_load_n(&kcov_cover[0], __ATOMIC_RELAXED);
+
+    FILE *file = fopen("output.txt", "w");
+    for (int i = 0; i < n; i++) {
+            printf("0x%lx\n", kcov_cover[i + 1]);
+            fprintf(file, "0x%lx\n", kcov_cover[i + 1]);
+    }
+    /* Disable coverage collection for the current thread. After this call
+     * coverage can be enabled for a different thread.
+     */
+    if (ioctl(kcov_fd, KCOV_DISABLE, 0))
+            perror("ioctl"), exit(1);
+    /* Free resources. */
+    if (munmap(kcov_cover, COVER_SIZE * sizeof(unsigned long)))
+            perror("munmap"), exit(1);
+    if (close(kcov_fd))
+            perror("close"), exit(1);
+}
+
 
 int main(int argc, char **argv) {
     //cleanup_resources();
@@ -242,22 +299,26 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    printf("Инициализация kcov...\n");
-    int kcov_fd = init_kcov(kcov_path);
-    if (kcov_fd < 0) {
-        umount(TEST_DIR);
-        return 1;
-    }
+    // printf("Инициализация kcov...\n");
+    // int kcov_fd = init_kcov(kcov_path);
+    // if (kcov_fd < 0) {
+    //     umount(TEST_DIR);
+    //     return 1;
+    // }
 
-    // Запуск kcov в режиме трассировки
-    if (ioctl(kcov_fd, KCOV_ENABLE, KCOV_TRACE_PC)) {
-        perror("Ошибка запуска kcov");
-        close(kcov_fd);
-        umount(TEST_DIR);
-        return 1;
-    }
+    // // Запуск kcov в режиме трассировки
+    // if (ioctl(kcov_fd, KCOV_ENABLE, KCOV_TRACE_PC)) {
+    //     perror("Ошибка запуска kcov");
+    //     close(kcov_fd);
+    //     umount(TEST_DIR);
+    //     return 1;
+    // }
+
+    
 
     initialize_test_files(TEST_DIR);
+
+    kcov_init();
 
     printf("Запуск фаззинга...\n");
     srand(time(NULL));
@@ -266,9 +327,11 @@ int main(int argc, char **argv) {
         perform_operation(op, TEST_DIR);
     }
 
-    // Отключение kcov
-    ioctl(kcov_fd, KCOV_DISABLE);
-    close(kcov_fd);
+    kcov_close();
+
+    // // Отключение kcov
+    // ioctl(kcov_fd, KCOV_DISABLE);
+    // close(kcov_fd);
 
     // Размонтирование файловой системы
     //printf("Размонтирование файловой системы...\n");
