@@ -1,0 +1,230 @@
+#old vm1
+qemu-system-x86_64 -m 6000 -smp 2 \
+-chardev socket,id=SOCKSYZ,server=on,wait=off,host=localhost,port=43548 \
+-mon chardev=SOCKSYZ,mode=control -display none -serial stdio -no-reboot \
+-name VM-0 -device virtio-rng-pci -enable-kvm -cpu host,migratable=off \
+-device e1000,netdev=net0,mac=52:54:00:12:34:56 \
+-netdev bridge,id=net0,br=br0 \
+-hda /home/slava/ocfs2_fuzzing/vm1/bullseye.img -snapshot \
+-drive file=/home/slava/ocfs2_fuzzing/vm1/vm1-disk.raw,format=raw,if=virtio,cache=none \
+-kernel /home/slava/linux/arch/x86/boot/bzImage \
+-append "root=/dev/sda console=ttyS0 earlyprintk=serial nokaslr"
+
+
+#old vm2
+qemu-system-x86_64 -m 6000 -smp 2 \
+-chardev socket,id=SOCKSYZ2,server=on,wait=off,host=localhost,port=43549 \
+-mon chardev=SOCKSYZ2,mode=control -display none -serial stdio -no-reboot \
+-name VM-1 -device virtio-rng-pci -enable-kvm -cpu host,migratable=off \
+-device e1000,netdev=net1,mac=52:54:00:12:34:57 \
+-netdev bridge,id=net1,br=br0 \
+-hda /home/slava/ocfs2_fuzzing/vm2/bullseye.img -snapshot \
+-drive file=/home/slava/ocfs2_fuzzing/vm2/vm2-disk.raw,format=raw,if=virtio,cache=none \
+-kernel /home/slava/linux/arch/x86/boot/bzImage \
+-append "root=/dev/sda console=ttyS0 earlyprintk=serial nokaslr"
+
+
+# vm1 + ssh
+qemu-system-x86_64 -m 6000 -smp 2 \
+-chardev socket,id=SOCKSYZ,server=on,wait=off,host=localhost,port=43548 \
+-mon chardev=SOCKSYZ,mode=control -display none -serial stdio -no-reboot \
+-name VM-0 -device virtio-rng-pci -enable-kvm -cpu host,migratable=off \
+-device e1000,netdev=sshnet \
+-netdev user,id=sshnet,hostfwd=tcp::17148-:22 \
+-device e1000,netdev=net1,mac=52:54:00:12:34:56 \
+-netdev bridge,id=net1,br=br0 \
+-hda /home/slava/ocfs2_fuzzing/vm1/bullseye.img -snapshot \
+-drive file=/home/slava/ocfs2_fuzzing/vm1/vm1-disk.raw,format=raw,if=virtio,cache=none \
+-kernel /home/slava/linux/arch/x86/boot/bzImage \
+-append "root=/dev/sda console=ttyS0 earlyprintk=serial nokaslr"
+
+# vm2 + ssh
+qemu-system-x86_64 -m 6000 -smp 2 \
+-chardev socket,id=SOCKSYZ,server=on,wait=off,host=localhost,port=43549 \
+-mon chardev=SOCKSYZ,mode=control -display none -serial stdio -no-reboot \
+-name VM-1 -device virtio-rng-pci -enable-kvm -cpu host,migratable=off \
+-device e1000,netdev=sshnet \
+-netdev user,id=sshnet,hostfwd=tcp::17149-:22 \
+-device e1000,netdev=net3,mac=52:54:00:12:34:57 \
+-netdev bridge,id=net3,br=br0 \
+-hda /home/slava/ocfs2_fuzzing/vm2/bullseye.img -snapshot \
+-drive file=/home/slava/ocfs2_fuzzing/vm2/vm2-disk.raw,format=raw,if=virtio,cache=none \
+-kernel /home/slava/linux/arch/x86/boot/bzImage \
+-append "root=/dev/sda console=ttyS0 earlyprintk=serial nokaslr"
+
+
+# for diploma kernel (vm1)
+qemu-system-x86_64 -m 6000 -smp 2 \
+-chardev socket,id=SOCKSYZ,server=on,wait=off,host=localhost,port=43548 \
+-mon chardev=SOCKSYZ,mode=control -display none -serial stdio -no-reboot \
+-name VM-0 -device virtio-rng-pci -enable-kvm -cpu host,migratable=off \
+-device e1000,netdev=sshnet \
+-netdev user,id=sshnet,hostfwd=tcp::17148-:22 \
+-device e1000,netdev=net1,mac=52:54:00:12:34:56 \
+-netdev bridge,id=net1,br=br0 \
+-hda /home/slava/diploma/syzkaller/bullseye.img -snapshot \
+-drive file=/home/slava/ocfs2_fuzzing/vm1/vm1-disk.raw,format=raw,if=virtio,cache=none \
+-kernel /home/slava/linux/arch/x86/boot/bzImage \
+-append "root=/dev/sda console=ttyS0 earlyprintk=serial nokaslr"
+
+
+# syzkaller script
+qemu-system-x86_64 -m 6000 -smp 2 \
+-chardev socket,id=SOCKSYZ,server=on,wait=off,host=localhost,port=41939 \
+-mon chardev=SOCKSYZ,mode=control -display none -serial stdio -no-reboot \
+-name VM-1 -device virtio-rng-pci -enable-kvm -cpu host,migratable=off \
+-device e1000,netdev=net0 \
+-netdev bridge,id=net3,br=br0 \
+-device e1000,netdev=net3,mac=52:54:00:12:34:57 \
+-netdev user,id=net0,restrict=on,hostfwd=tcp::47638-:22 \
+-hda /home/slava/ocfs2_fuzzing/vm2/bullseye.img -snapshot \
+-drive file=/home/slava/ocfs2_fuzzing/vm2/vm2-disk.raw,format=raw,if=virtio,cache=none \
+-kernel /home/slava/linux/arch/x86/boot/bzImage \
+-append "root=/dev/sda console=ttyS0"
+
+# wtf??
+qemu-system-x86_64 -m 6000 -smp 2 \
+-chardev socket,id=SOCKSYZ,server=on,wait=off,host=localhost,port=5756 \
+-mon chardev=SOCKSYZ,mode=control -display none -serial stdio -no-reboot \
+-name VM-1 -device virtio-rng-pci -enable-kvm -cpu host,migratable=off \
+-netdev user,id=net0,restrict=on,hostfwd=tcp:127.0.0.1:15286-:22 \
+-device e1000,netdev=net0 \
+-netdev bridge,id=net3,br=br0 \
+-device e1000,netdev=net3,mac=52:54:00:12:34:57 \
+-hda /home/slava/ocfs2_fuzzing/vm2/bullseye.img -snapshot \
+-drive file=/home/slava/ocfs2_fuzzing/vm2/vm2-disk.raw,format=raw,if=virtio,cache=none \
+-kernel /home/slava/linux/arch/x86/boot/bzImage \
+-append "root=/dev/sda console=ttyS0"
+
+
+
+#bridge
+sudo ip link add br0 type bridge
+sudo ip link set br0 up
+
+sudo ip addr add 192.168.100.1/24 dev br0
+sudo ip link set br0 up
+
+?? sudo ip link set br0 type bridge stp_state 0
+
+
+# on vm1
+ip addr add 192.168.100.2/24 dev eth1
+ip link set eth1 up
+
+# on vm2
+ip addr add 192.168.100.3/24 dev eth1
+ip link set eth1 up
+
+
+#/etc/ocfs2/cluster.conf
+cluster:
+    node_count = 2
+    name = ocfs2cluster
+
+node:
+    name = vm1
+    cluster = ocfs2cluster
+    number = 0
+    ip_port = 7777
+    ip_address = 192.168.100.2
+
+node:
+    name = vm2
+    cluster = ocfs2cluster
+    number = 1
+    ip_port = 7777
+    ip_address = 192.168.100.3
+
+# both
+sudo systemctl enable --now o2cb
+sudo systemctl enable --now ocfs2
+      
+# на vm1
+sudo mkfs.ocfs2 -b 4K -C 32K -N 2 /dev/drbd1
+
+sudo mount -t ocfs2 -o _netdev /dev/drbd1 /mnt/shared
+
+
+
+## on both vms
+mkdir -p /mnt/shared
+# to /etc/fstab
+/dev/vda /mnt/shared ocfs2 defaults,_netdev 0 0
+
+mount -a
+df -h
+
+#/etc/drbd.d/ocfs2.res
+resource ocfs2 {
+    device /dev/drbd0;
+    disk /dev/vda; # Локальное устройство для репликации
+    meta-disk internal;
+
+    on vm1 {
+        address 192.168.100.2:7788; # IP-адрес первой ВМ
+    }
+
+    on vm2 {
+        address 192.168.100.3:7788; # IP-адрес второй ВМ
+    }
+}
+
+# /etc/drbd.d/shared.res on both vm
+resource shared {
+    protocol C;
+    net {
+        allow-two-primaries;
+        sndbuf-size 0;
+    }
+    disk {
+        no-disk-barrier;
+        no-disk-flushes;
+    }
+    startup {
+        become-primary-on both;
+    }
+    on vm1 {
+        device    /dev/drbd1;
+        disk      /dev/vda;
+        address   192.168.100.2:7789;
+        meta-disk internal;
+    }
+    on vm2 {
+        device    /dev/drbd1;
+        disk      /dev/vda;
+        address   192.168.100.3:7789;
+        meta-disk internal;
+    }
+}
+
+# both
+sudo drbdadm create-md shared
+sudo drbdadm up shared
+
+sudo drbdadm primary --force shared
+
+sudo drbdadm primary shared
+
+cat /proc/drbd
+
+
+systemctl enable --now o2cb
+
+
+# to rc.local???
+# Запуск DRBD
+drbdadm up shared
+drbdadm primary --force shared
+
+# Запуск OCFS2
+o2cb register-cluster ocfs2cluster
+o2cb heartbeat-mode local ocfs2cluster
+mount -t ocfs2 -o _netdev /dev/drbd1 /mnt/shared
+
+sudo scp -P 17149 -i ../ocfs2_fuzzing/vm2/bullseye.id_rsa ioctl_test root@localhost:/root/
+
+./syz-execprog -executor=./syz-executor -repeat=0 ./test_openat.prog
+
+
+

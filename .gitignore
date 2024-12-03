@@ -1,1 +1,6 @@
 bullseye*
+buster
+__*__
+*.raw
+ocfs2_fuzzing/vm1/*.raw
+ocfs2_fuzzing/vm2/*.raw
