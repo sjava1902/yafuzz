@@ -1,0 +1,22 @@
+2024-12-20 23:12:57 URL:http://deb.debian.org/debian/dists/buster/InRelease [121573/121573] -> "/home/slava/yafuzz/buster/var/lib/apt/lists/partial/deb.debian.org_debian_dists_buster_InRelease" [1]
+gpgv: Signature made Sat Jun 10 11:54:52 2023 MSK
+gpgv:                using RSA key 0146DC6D4A0B2914BDED34DB648ACFD622F3D138
+gpgv: Good signature from "Debian Archive Automatic Signing Key (10/buster) <ftpmaster@debian.org>"
+gpgv: Signature made Sat Jun 10 11:54:52 2023 MSK
+gpgv:                using RSA key A7236886F3CCCAAD148A27F80E98404D386FA1D9
+gpgv: Good signature from "Debian Archive Automatic Signing Key (11/bullseye) <ftpmaster@debian.org>"
+gpgv: Signature made Sat Jun 10 12:31:22 2023 MSK
+gpgv:                using RSA key 6D33866EDD8FFA41C0143AEDDCC9EFBF77E11517
+gpgv:                issuer "debian-release@lists.debian.org"
+gpgv: Good signature from "Debian Stable Release Key (10/buster) <debian-release@lists.debian.org>"
+2024-12-20 23:13:15 URL:https://archive.debian.org/debian-archive/debian/dists/buster/InRelease [121573/121573] -> "/home/slava/yafuzz/buster/var/lib/apt/lists/partial/archive.debian.org_debian-archive_debian_dists_buster_InRelease" [1]
+gpgv: Signature made Sat Jun 10 11:54:52 2023 MSK
+gpgv:                using RSA key 0146DC6D4A0B2914BDED34DB648ACFD622F3D138
+gpgv: Can't check signature: No public key
+gpgv: Signature made Sat Jun 10 11:54:52 2023 MSK
+gpgv:                using RSA key A7236886F3CCCAAD148A27F80E98404D386FA1D9
+gpgv: Can't check signature: No public key
+gpgv: Signature made Sat Jun 10 12:31:22 2023 MSK
+gpgv:                using RSA key 6D33866EDD8FFA41C0143AEDDCC9EFBF77E11517
+gpgv:                issuer "debian-release@lists.debian.org"
+gpgv: Can't check signature: No public key
