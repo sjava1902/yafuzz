@@ -1,25 +1,27 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 
-	"golang.org/x/crypto/ssh"
 	"github.com/pkg/sftp"
+	"golang.org/x/crypto/ssh"
 
 	"github.com/sjava1902/yafuzz/config"
 )
 
 // Конфигурация
 const (
-	qemuCmd         = "qemu-system-x86_64 -m 6000 -smp 2 -chardev socket,id=SOCKSYZ,server=on,wait=off,host=localhost,port=43548 -mon chardev=SOCKSYZ,mode=control -display none -serial stdio -no-reboot -name VM-0 -device virtio-rng-pci -enable-kvm -cpu host,migratable=off -device e1000,netdev=net0 -netdev user,id=net0,restrict=on,hostfwd=tcp:127.0.0.1:2222-:22 -hda /path/to/image/bullseye.img -snapshot -kernel /home/slava/linux/arch/x86/boot/bzImage -append \"root=/dev/sda console=ttyS0\" -nographic"
-	sshAddress      = "localhost:2222"
-	sshPrivateKey   = "/home/slava/Fuzz/bullseye.id_rsa"
-	remoteCoverage  = "/root/output.txt"
-	localCoverage   = "output.txt"
-	remoteDir       = "/root/yafuzz"
+	qemuCmd        = "qemu-system-x86_64 -m 6000 -smp 2 -chardev socket,id=SOCKSYZ,server=on,wait=off,host=localhost,port=43548 -mon chardev=SOCKSYZ,mode=control -display none -serial stdio -no-reboot -name VM-0 -device virtio-rng-pci -enable-kvm -cpu host,migratable=off -device e1000,netdev=net0 -netdev user,id=net0,restrict=on,hostfwd=tcp:127.0.0.1:2222-:22 -hda /home/slava/yafuzz/bullseye.img -snapshot -kernel /home/slava/linux/arch/x86/boot/bzImage -append \"root=/dev/sda console=ttyS0\" -nographic"
+	sshAddress     = "localhost:2222"
+	sshPrivateKey  = "/home/slava/yafuzz/bullseye.id_rsa"
+	remoteCoverage = "/root/output.txt"
+	localCoverage  = "output.txt"
+	remoteDir      = "/root/yafuzz"
 )
 
 func main() {
@@ -34,7 +36,7 @@ func main() {
 	// time.Sleep(30 * time.Second) // Ждем, пока VM запустится
 	var config config.Config
 	config.InitConfig("config.txt")
-	
+
 	client, err := sshConnect(sshAddress, sshPrivateKey)
 	if err != nil {
 		log.Fatalf("[ERROR] Ошибка подключения по SSH: %v", err)
@@ -51,15 +53,57 @@ func main() {
 
 	fmt.Println("[INFO] Запуск фаззинга...")
 	err = runCommand(client, fmt.Sprintf("cd %s && ./fuzzer --fs=gfs2 --kcov=/sys/kernel/debug/kcov --output=%s", remoteDir, remoteCoverage))
+	//err = runCommand(client, fmt.Sprintf("cd %s && ./coverage", remoteDir))
 	if err != nil {
 		log.Fatalf("[ERROR] Ошибка выполнения фаззинга: %v", err)
 	}
 
 	fmt.Println("[INFO] Загрузка покрытия на хост...")
-	err = downloadCoverage(client, remoteCoverage, localCoverage)
+	// err = downloadCoverage(client, remoteCoverage, localCoverage)
+	// if err != nil {
+	// 	log.Fatalf("[ERROR] Ошибка загрузки покрытия: %v", err)
+	// }
+	err = copyFileFromRemote(client, "/root/yafuzz/output.txt", "output.txt")
 	if err != nil {
 		log.Fatalf("[ERROR] Ошибка загрузки покрытия: %v", err)
 	}
+}
+
+// copyFileFromRemote копирует файл с удаленного хоста на локальный
+func copyFileFromRemote(client *ssh.Client, remoteFilePath, localFilePath string) error {
+	// Открыть новую сессию
+	session, err := client.NewSession()
+	if err != nil {
+		return fmt.Errorf("failed to create SSH session: %v", err)
+	}
+	defer session.Close()
+
+	// Создать pipe для получения данных файла
+	var buf bytes.Buffer
+	session.Stdout = &buf
+	command := fmt.Sprintf("cat %s", remoteFilePath)
+	if err := session.Run(command); err != nil {
+		return fmt.Errorf("failed to run remote command: %v", err)
+	}
+
+	// Сохранить файл локально
+	localDir := filepath.Dir(localFilePath)
+	if err := os.MkdirAll(localDir, 0755); err != nil {
+		return fmt.Errorf("failed to create local directory: %v", err)
+	}
+
+	localFile, err := os.Create(localFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to create local file: %v", err)
+	}
+	defer localFile.Close()
+
+	_, err = io.Copy(localFile, &buf)
+	if err != nil {
+		return fmt.Errorf("failed to write to local file: %v", err)
+	}
+
+	return nil
 }
 
 // sshConnect подключается к удаленной машине по SSH
@@ -173,30 +217,30 @@ func sendFile(client *ssh.Client, localPath, remotePath string, isExecutable boo
 	fmt.Printf("[INFO] Копирование файла %s на виртуальную машину...\n", localPath)
 	// Открываем локальный файл
 	sftp, err := sftp.NewClient(client)
-    if err != nil {
-        return err
-    }
-    defer sftp.Close()
-    // Open the source file
-    srcFile, err := os.Open(localPath)
-    if err != nil {
-        return err
-    }
-    defer srcFile.Close()
-    // Create the destination file
-    dstFile, err := sftp.Create(remotePath + "/" + localPath)
-    if err != nil {
-        return err
-    }
-    defer dstFile.Close()
-    // write to file
-    if  _, err := dstFile.ReadFrom(srcFile); err!= nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
+	defer sftp.Close()
+	// Open the source file
+	srcFile, err := os.Open(localPath)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+	// Create the destination file
+	dstFile, err := sftp.Create(remotePath + "/" + localPath)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+	// write to file
+	if _, err := dstFile.ReadFrom(srcFile); err != nil {
+		return err
+	}
 
-	if (isExecutable) {
+	if isExecutable {
 		commands := []string{
-			fmt.Sprintf("chmod +x %s", remoteDir + "/" + localPath),
+			fmt.Sprintf("chmod +x %s", remoteDir+"/"+localPath),
 		}
 		for _, cmd := range commands {
 			if err := runCommand(client, cmd); err != nil {
@@ -204,5 +248,5 @@ func sendFile(client *ssh.Client, localPath, remotePath string, isExecutable boo
 			}
 		}
 	}
-    return nil
+	return nil
 }
